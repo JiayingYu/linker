@@ -14,6 +14,8 @@ public class Linker {
 	private File sourceFile;
 	private Map<String, Integer> symbolTable = new TreeMap<String, Integer>();
 	private List<Integer> memMap = new ArrayList<Integer>();
+	private int lineNum = 0;
+	private int offset = 0;
 	
 	public Linker(String fileName) {
 		sourceFile = new File(fileName);
