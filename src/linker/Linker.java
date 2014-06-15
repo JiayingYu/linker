@@ -7,13 +7,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.TreeMap;
 
 
 public class Linker {
 	private List<ObjectModule> moduleList = new ArrayList<ObjectModule>();
 	private SymbolTable symbolTable = new SymbolTable();
-	private List<Integer> memMap = new ArrayList<Integer>();
+	private MemoryMap memMap = new MemoryMap();
 	private int lineNum = 1;
 	private int offset = 0;
 	private Scanner scanner;
@@ -222,7 +221,7 @@ public class Linker {
 				case('R'): 
 					resolveRelAddress(currInstr, currBaseAddress); break;
 				case('E'): 
-					resolveExtAddress(currInstr, currBaseAddress, currModule); break;
+					resolveExtAddress(currInstr, currModule); break;
 				default: 
 					System.out.print("Invalid instruction type."); break;
 				}
@@ -246,23 +245,37 @@ public class Linker {
 		memMap.add(resolvedInstr);
 	}
 	
-	private void resolveExtAddress(int currInstr, int currBaseAddress, ObjectModule currModule) {
+	private void resolveExtAddress(int currInstr, ObjectModule currModule) {
 		int opcode = currInstr / 1000;
 		int extAddress = currInstr % 1000; //the index into the current module's useList
 		String useListSymbol = currModule.getUseList().get(extAddress); //check if get method returns null
 		
-		int globalAddress = symbolTable.getAddr(useListSymbol);
-		int resolvedInstr = globalAddress + opcode * 1000;
-		memMap.add(resolvedInstr);
+		if (symbolTable.contains(useListSymbol)) {
+			int globalAddress = symbolTable.getAddr(useListSymbol);
+			int resolvedInstr = globalAddress + opcode * 1000;
+			memMap.add(resolvedInstr);
+		}
+		else {
+			memMap.add(opcode * 1000, 
+					useListSymbol + " is not defined; zero used"); //No 3
+		}
 	}
 	
 	public void printMemMap() {
 		System.out.println("Memory Map");
 		//iterate through memMap
-		Iterator<Integer> it = memMap.iterator();
+		Iterator<MemTuple> it = memMap.iterator();
+		int addr = 0;
+		int index = 0;
+		String errorMsg = "";
+		
 		while(it.hasNext()) {
-			int address = it.next();
-			System.out.printf("%03d: %4d\n", memMap.indexOf(address), address);
+			MemTuple mt = it.next();
+			addr= mt.addr;
+			errorMsg = mt.getErrorMsg();
+			
+			System.out.printf("%03d: %4d %s\n", index, addr, errorMsg);
+			index++;
 		}
 	}
 	
