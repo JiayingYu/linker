@@ -250,15 +250,10 @@ public class Linker {
 
 		while (it.hasNext()) {
 			ObjectModule currModule = it.next();
-			int currBaseAddress = currModule.getBaseAddress(); // base address
-																// of the
-																// current
-																// module
-			List<InstructionPair> codeList = currModule.getCodeList(); // get
-																		// current
-																		// module's
-																		// program
-																		// text
+			// base address of the current module
+			int currBaseAddress = currModule.getBaseAddress(); 
+			// get current module's program text
+			List<InstructionPair> codeList = currModule.getCodeList(); 
 
 			// iterate through programText
 			for (int i = 0; i < codeList.size(); i++) {
@@ -324,23 +319,35 @@ public class Linker {
 	}
 
 	private void resolveAbsAddress(int currInstr) {
+		// for No. 9
+		if (currInstr > 512) {
+			String errorMsg = " Error: Absolute address exceeds machine size; zero used";
+			memMap.add(currInstr / 1000 * 1000, errorMsg);
+			return;
+		}	
 		memMap.add(currInstr);
 	}
 
 	private void resolveRelAddress(int currInstr, int currBaseAddress) {
-		int relAddress = currInstr % 1000; // rightmost three digit of the
-											// current instruction
+		// rightmost three digit of the current instruction
+		int relAddress = currInstr % 1000; 
+		String errorMsg = "";
+		//for No. 8
+		if (relAddress > moduleSize() - 1) {
+			relAddress = 0;
+			errorMsg = " Error: Relative address exceeds module size; zero used";
+		}
 		int opcode = currInstr / 1000;
 		int globalAddress = currBaseAddress + relAddress;
 		int resolvedInstr = globalAddress + opcode * 1000;
-		memMap.add(resolvedInstr);
+		memMap.add(resolvedInstr, errorMsg);
 	}
 
 	// return the symbol used by the E type intr
 	private void resolveExtAddress(int currInstr, ObjectModule currModule) {
 		int opcode = currInstr / 1000;
-		int extAddress = currInstr % 1000; // the index into the current
-											// module's useList
+		// the index into the current module's useList
+		int extAddress = currInstr % 1000; 
 		String useListSymbol = "";
 		// if extAddr exceeds the length of useList, use currInstr as immediate No. 6
 		if (extAddress > currModule.useList.size() - 1) {
