@@ -33,6 +33,10 @@ public class SymbolTable {
 		treeMap.get(symbol).markUsage(true);
 	}
 	
+	public void setAddr(String symbol, int addr) {
+		treeMap.get(symbol).setAddr(addr);
+	}
+	
 	public String toString() {
 		String s = "SymbolTable\n";
 		for (Map.Entry<String, SymbolTuple> entry : treeMap.entrySet()) {
@@ -49,7 +53,7 @@ public class SymbolTable {
 }
 
 class SymbolTuple {
-	public final int addr;
+	private int addr;
 	private boolean duplicated;
 	private boolean used = false;
 	public final int moduleNo;
@@ -68,6 +72,10 @@ class SymbolTuple {
 		return addr;
 	}
 	
+	public void setAddr(int addr) {
+		this.addr = addr;
+	}
+	
 	String getErrorMsg() {
 		return (duplicated? errorMsg : "");
 	}
@@ -79,4 +87,7 @@ class SymbolTuple {
 	boolean isUsed() {
 		return used;
 	}
+	
+
+	
 }

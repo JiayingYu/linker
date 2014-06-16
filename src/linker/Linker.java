@@ -50,8 +50,51 @@ public class Linker {
 
 			baseAddress += currModule.getCodeCount(); // base address for the next module
 			moduleNo++;
-			moduleList.add(currModule); // add the current module to module list
+			moduleList.add(currModule); // add the current module to module list		
 		}
+		checkDefRelAddress();
+	}
+	
+	//check if an address in definition exceeds the size of the module. for No5
+	private void checkDefRelAddress() {
+		int moduleSize = moduleSize();
+		
+		//iterate through the moduleList
+		Iterator<ObjectModule> modListIt = moduleList.iterator();	
+		while(modListIt.hasNext()) {
+			ObjectModule module = modListIt.next();
+			
+			//iterate through the current defList, 
+			Iterator<SymbolPair> it = module.getDefList().iterator();
+			while(it.hasNext()) {
+				// check if any relAddress exceeds module size(codeCount - 1)
+				SymbolPair sp = it.next();
+				if (sp.getRelAddress() > (moduleSize)) {
+					int oldRelAddr = sp.getRelAddress();
+					//set relAddr in module
+					sp.setRelAddress(0);  
+					//set globalAddr in symbolTable
+					int globalAddr = module.baseAddress;
+					symbolTable.setAddr(sp.symbol, globalAddr); 
+					
+					int moduleNo = module.moduleNo;
+					String warnMsg = "Module " + moduleNo + ": " + sp.symbol
+							+ " too big " + oldRelAddr + " (max=" + moduleSize
+							+ ") assume zero relative";
+					warningList.add(warnMsg);
+				}
+			}
+		}	
+	}
+	
+	private int moduleSize() {
+		int tolCodeCount = 0;
+		//iterate through the moduleList
+		Iterator<ObjectModule> modListIt = moduleList.iterator();
+		while(modListIt.hasNext()) {
+			tolCodeCount += modListIt.next().codeCount;
+		}
+		return tolCodeCount - 1;
 	}
 
 	private void calLocation() {
@@ -277,12 +320,12 @@ public class Linker {
 		int extAddress = currInstr % 1000; //the index into the current module's useList
 		String useListSymbol =  currModule.getUseSymbol(extAddress);
 		currModule.markSymbolAsUsed(extAddress); //mark the useListSymbol as used in uselist in current module
-		symbolTable.markSymbolAsUsed(useListSymbol); //mark the useListSymbol as used in symbolTable
 
 		if (symbolTable.contains(useListSymbol)) { // No3
 			int globalAddress = symbolTable.getAddr(useListSymbol);
 			int resolvedInstr = globalAddress + opcode * 1000;
 			memMap.add(resolvedInstr);
+			symbolTable.markSymbolAsUsed(useListSymbol); //mark the useListSymbol as used in symbolTable
 		}
 		else {
 			String errorMsg = " Error: " + useListSymbol + " is not defined; zero used";
