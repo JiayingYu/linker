@@ -10,7 +10,13 @@ public class ObjectModule {
 	List<SymbolPair> defList = new ArrayList<SymbolPair>();
 	List<UseTuple> useList = new ArrayList<UseTuple>();
 	List<InstructionPair> codeList = new ArrayList<InstructionPair>();
-	int baseAddress = 0;
+	public final int baseAddress;
+	public final int moduleNo;
+	
+	public ObjectModule(int baseAddress, int moduelNo) {
+		this.baseAddress = baseAddress;
+		this.moduleNo = moduelNo;
+	}
 	
 	public int getDefCount() {
 		return defCount;
@@ -52,10 +58,6 @@ public class ObjectModule {
 		return baseAddress;
 	}
 	
-	public void setBaseAddress(int baseAddress) {
-		this.baseAddress = baseAddress;
-	}	
-	
 	public void addToUseList(String symbol) {
 		UseTuple ut = new UseTuple(symbol);
 		useList.add(ut);
@@ -67,7 +69,7 @@ public class ObjectModule {
 	}
 	
 	public void markSymbolAsUsed(int index) {
-		useList.get(index).markAsUsed(true);
+		useList.get(index).markUsage(true);
 	}
 }
 
@@ -81,11 +83,11 @@ class UseTuple {
 	
 	UseTuple(String useSymbol, boolean used) {
 		this.useSymbol = useSymbol;
-		markAsUsed(used);
+		markUsage(used);
 	}
 	
 	//mark the current symbol in uselist as used
-	public void markAsUsed(boolean used) {
+	public void markUsage(boolean used) {
 		this.used = used;
 	}
 	

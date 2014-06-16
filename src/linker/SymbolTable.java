@@ -7,13 +7,13 @@ import java.util.TreeMap;
 public class SymbolTable {
 	private Map<String, SymbolTuple> treeMap = new TreeMap<String, SymbolTuple>();
 	
-	public void put(String symbol, int addr) {
-		SymbolTuple sp = new SymbolTuple(addr);
+	public void put(String symbol, int addr, int moduleNo) {
+		SymbolTuple sp = new SymbolTuple(addr, moduleNo);
 		treeMap.put(symbol, sp);	
 	}
 	
-	public void setErrorMsg(String symbol, boolean error) {
-		treeMap.get(symbol).setErrorMsg(error);
+	public void setErrorMsg(String symbol, boolean duplicated) {
+		treeMap.get(symbol).setErrorMsg(duplicated);
 	}
 	
 	
@@ -28,19 +28,40 @@ public class SymbolTable {
 	public int getAddr(String symbol) {
 		return treeMap.get(symbol).getAddr();
 	}
+	
+	public void markSymbolAsUsed(String symbol) {
+		treeMap.get(symbol).markUsage(true);
+	}
+	
+	public String toString() {
+		String s = "SymbolTable\n";
+		for (Map.Entry<String, SymbolTuple> entry : treeMap.entrySet()) {
+			String symbol = entry.getKey();
+			int addr = entry.getValue().getAddr();
+			String errorMsg = entry.getValue().getErrorMsg();	
+			int ModuleNo = entry.getValue().moduleNo;
+			s += symbol + "=" + addr + " " + errorMsg + " " +  ModuleNo
+					+  " " + entry.getValue().isUsed() + "\n";
+		}
+		return s;
+	}
+	
 }
 
 class SymbolTuple {
-	private final int addr;
-	private boolean error;
-	static final String errorMsg = "Error: This Variable is multiple times defined; first value used";
+	public final int addr;
+	private boolean duplicated;
+	private boolean used = false;
+	public final int moduleNo;
+	public static final String errorMsg = "Error: This Variable is multiple times defined; first value used";
 	
-	SymbolTuple (int addr) {
+	SymbolTuple (int addr, int moduleNo) {
 		this.addr = addr;
+		this.moduleNo = moduleNo;
 	}
 	
-	void setErrorMsg(boolean error) {
-		this.error = error;
+	void setErrorMsg(boolean duplicated) {
+		this.duplicated = duplicated;
 	}
 	
 	int getAddr() {
@@ -48,6 +69,14 @@ class SymbolTuple {
 	}
 	
 	String getErrorMsg() {
-		return (error? errorMsg : "");
+		return (duplicated? errorMsg : "");
+	}
+	
+	void markUsage(boolean used) {
+		this.used = used;
+	}
+	
+	boolean isUsed() {
+		return used;
 	}
 }

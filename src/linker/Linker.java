@@ -40,16 +40,16 @@ public class Linker {
 
 	public void passOne() throws SyntaxException {
 		int baseAddress = 0;
+		int moduleNo = 1;
 		while (scanner.hasNext()) {
-			ObjectModule currModule = new ObjectModule();
+			ObjectModule currModule = new ObjectModule(baseAddress, moduleNo);
 
-			readDefList(currModule, baseAddress);
+			readDefList(currModule);
 			readUseList(currModule);
 			readProgramText(currModule);
 
-			currModule.setBaseAddress(baseAddress);
-			baseAddress += currModule.getCodeCount(); // base address for the
-														// next module
+			baseAddress += currModule.getCodeCount(); // base address for the next module
+			moduleNo++;
 			moduleList.add(currModule); // add the current module to module list
 		}
 	}
@@ -63,7 +63,7 @@ public class Linker {
 		offset++;
 	}
 
-	private void readDefList(ObjectModule module, int baseAddress) throws SyntaxException {
+	private void readDefList(ObjectModule module) throws SyntaxException {
 		int defCount = 0;
 		calLocation();
 
@@ -97,14 +97,23 @@ public class Linker {
 
 			SymbolPair sp = new SymbolPair(symbol, relAddress);
 			module.defList.add(sp);
-			storeSymbolTable(symbol, baseAddress, relAddress);
+			storeSymbolTable(symbol, module.baseAddress, module.moduleNo, relAddress);
 		}
 
 		 if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
 			 throw new SyntaxException("too many def in module " + lineNum + " " +
 		 offset );
 		 }
+	}
 
+	private void storeSymbolTable(String symbol, int baseAddress, int moduleNo, int relAddress) {
+		if (!symbolTable.contains(symbol)) {
+			int absAddress = baseAddress + relAddress;
+			symbolTable.put(symbol, absAddress, moduleNo);
+		}
+		else {
+			symbolTable.setErrorMsg(symbol, true);
+		}
 	}
 
 	private void readUseList(ObjectModule module) throws SyntaxException {
@@ -179,26 +188,8 @@ public class Linker {
 		}
 	}
 
-	private void storeSymbolTable(String symbol, int baseAddress, int relAddress) {
-		if (!symbolTable.contains(symbol)) {
-			int absAddress = baseAddress + relAddress;
-			symbolTable.put(symbol, absAddress);
-		}
-		else {
-			symbolTable.setErrorMsg(symbol, true);
-		}
-	}
-
 	public void printSymbolTable() {
-		System.out.println("Symbol Table");
-		
-		for (Map.Entry<String, SymbolTuple> entry : symbolTable.entrySet()) {
-			String symbol = entry.getKey();
-			int addr = entry.getValue().getAddr();
-			String errorMsg = entry.getValue().getErrorMsg();
-			
-			System.out.println(symbol + "=" + addr + " " + errorMsg);
-		}
+		System.out.print(symbolTable);
 	}
 	
 	public void passTwo() {
@@ -230,7 +221,8 @@ public class Linker {
 				}
 			}		
 			checkUseListUsage(currModule);
-		}	
+		}
+		checkSymbolTableUsage();
 	}
 	
 	//check if the symbols in useList are used in the current module
@@ -240,10 +232,24 @@ public class Linker {
 		while(it.hasNext()) {
 			UseTuple useListTuple = it.next();
 			if (!useListTuple.used()) { //if the Tuple in uselist is not used, add to warningList
-				int moduleNo = currModule.getBaseAddress() + 1;
+				int moduleNo = currModule.moduleNo;
 				String unUsedSymbol = useListTuple.useSymbol;
 				String warnMsg = "Module " + moduleNo + ": " + unUsedSymbol
 						+ " appeared in the useList but was not actually used";
+				warningList.add(warnMsg);
+			}
+		}
+	}
+	
+	private void checkSymbolTableUsage() {
+		//iterate through the symbolTable, check if a symbol is used
+		for(Map.Entry<String, SymbolTuple> entry: symbolTable.entrySet()) {
+			boolean symbolUsed = entry.getValue().isUsed();
+			if (symbolUsed == false) {
+				int moduleNo = entry.getValue().moduleNo;
+				String unUsedSymbol = entry.getKey();
+				String warnMsg = "Module " + moduleNo + ": " +  unUsedSymbol
+						+ " was defined but never used";
 				warningList.add(warnMsg);
 			}
 		}
@@ -271,7 +277,8 @@ public class Linker {
 		int extAddress = currInstr % 1000; //the index into the current module's useList
 		String useListSymbol =  currModule.getUseSymbol(extAddress);
 		currModule.markSymbolAsUsed(extAddress); //mark the useListSymbol as used in uselist in current module
-		
+		symbolTable.markSymbolAsUsed(useListSymbol); //mark the useListSymbol as used in symbolTable
+
 		if (symbolTable.contains(useListSymbol)) { // No3
 			int globalAddress = symbolTable.getAddr(useListSymbol);
 			int resolvedInstr = globalAddress + opcode * 1000;
@@ -280,7 +287,8 @@ public class Linker {
 		else {
 			String errorMsg = " Error: " + useListSymbol + " is not defined; zero used";
 			memMap.add(opcode * 1000, errorMsg); //No 3
-		}		
+		}	
+		
 	}
 	
 	public void printMemMap() {
@@ -304,7 +312,7 @@ public class Linker {
 	public void printWarnings() {
 		Iterator<String> it = warningList.iterator();
 		while(it.hasNext()) {
-			System.out.println(it.next());
+			System.out.println("Warning: " + it.next());
 		}
 	}
 	

@@ -4,7 +4,7 @@ import java.io.FileNotFoundException;
 
 public class LinkerTest {
 	public static void main(String[] args) throws FileNotFoundException, SyntaxException {
-		String fileName = "input-9";
+		String fileName = "input-3";
 		Linker linker = new Linker(fileName);
 		
 		linker.passOne();  
@@ -12,8 +12,8 @@ public class LinkerTest {
 		System.out.println();
 		linker.passTwo();
 		linker.printMemMap();
+		linker.printSymbolTable();
 		linker.printWarnings();
-
 	}
 	
 	
