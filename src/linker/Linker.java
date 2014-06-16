@@ -17,6 +17,7 @@ public class Linker {
 	private int offset = 0;
 	private Scanner scanner;
 	private File sourceFile;
+	private List<String> warningList = new ArrayList<String>();
 
 	public Linker(String fileName) throws FileNotFoundException {
 		sourceFile = new File(fileName);
@@ -129,7 +130,7 @@ public class Linker {
 				throw new SyntaxException("symbol too long " + lineNum + " " + offset);
 			}
 
-			module.getUseList().add(useSymbol);
+			module.addToUseList(useSymbol);
 		}
 		
 		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
@@ -203,6 +204,7 @@ public class Linker {
 	public void passTwo() {
 		//iterate through moduleList
 		Iterator<ObjectModule> it = moduleList.iterator();
+
 		while(it.hasNext()) {
 			ObjectModule currModule = it.next();
 			int currBaseAddress = currModule.getBaseAddress(); //base address of the current module
@@ -221,12 +223,30 @@ public class Linker {
 				case('R'): 
 					resolveRelAddress(currInstr, currBaseAddress); break;
 				case('E'): 
-					resolveExtAddress(currInstr, currModule); break;
+					resolveExtAddress(currInstr, currModule); 
+					break;
 				default: 
 					System.out.print("Invalid instruction type."); break;
 				}
 			}		
+			checkUseListUsage(currModule);
 		}	
+	}
+	
+	//check if the symbols in useList are used in the current module
+	private void checkUseListUsage(ObjectModule currModule) {
+		//iterate through the useList
+		Iterator<UseTuple> it = currModule.getUseList().iterator();
+		while(it.hasNext()) {
+			UseTuple useListTuple = it.next();
+			if (!useListTuple.used()) { //if the Tuple in uselist is not used, add to warningList
+				int moduleNo = currModule.getBaseAddress() + 1;
+				String unUsedSymbol = useListTuple.useSymbol;
+				String warnMsg = "Module " + moduleNo + ": " + unUsedSymbol
+						+ " appeared in the useList but was not actually used";
+				warningList.add(warnMsg);
+			}
+		}
 	}
 	
 	private void resolveImAddress(int currInstr) {
@@ -245,20 +265,22 @@ public class Linker {
 		memMap.add(resolvedInstr);
 	}
 	
+	//return the symbol used by the E type intr
 	private void resolveExtAddress(int currInstr, ObjectModule currModule) {
 		int opcode = currInstr / 1000;
 		int extAddress = currInstr % 1000; //the index into the current module's useList
-		String useListSymbol = currModule.getUseList().get(extAddress); //check if get method returns null
+		String useListSymbol =  currModule.getUseSymbol(extAddress);
+		currModule.markSymbolAsUsed(extAddress); //mark the useListSymbol as used in uselist in current module
 		
-		if (symbolTable.contains(useListSymbol)) {
+		if (symbolTable.contains(useListSymbol)) { // No3
 			int globalAddress = symbolTable.getAddr(useListSymbol);
 			int resolvedInstr = globalAddress + opcode * 1000;
 			memMap.add(resolvedInstr);
 		}
 		else {
-			memMap.add(opcode * 1000, 
-					useListSymbol + " is not defined; zero used"); //No 3
-		}
+			String errorMsg = " Error: " + useListSymbol + " is not defined; zero used";
+			memMap.add(opcode * 1000, errorMsg); //No 3
+		}		
 	}
 	
 	public void printMemMap() {
@@ -279,40 +301,47 @@ public class Linker {
 		}
 	}
 	
-	public void printModuleList() {
-		System.out.println("\n\nprint module list");
-		
-		Iterator<ObjectModule> it = moduleList.iterator();
-		while (it.hasNext()) {
-			ObjectModule currModule = it.next();
-			System.out.print(currModule.defCount + " ");
-			
-			//print defList
-			List<SymbolPair> defList = currModule.getDefList();
-			for (int i = 0; i < defList.size(); i++) {
-				System.out.print(defList.get(i).symbol + " ");
-				System.out.print(defList.get(i).relAddress + " ");
-			}
-			System.out.println();
-			
-			System.out.print(currModule.useCount + " ");
-			
-			//print useList
-			List<String> useList = currModule.getUseList();
-			for (int i = 0; i < useList.size(); i++) {
-				System.out.print(useList.get(i) + " ");
-			}
-			System.out.println();
-			
-			System.out.print(currModule.codeCount + " ");
-			
-			//print codeList
-			List<InstructionPair> codeList = currModule.getCodeList();
-			for (int i = 0; i < codeList.size(); i++) {
-				System.out.print(codeList.get(i).instrType + " ");
-				System.out.print(codeList.get(i).instr + " ");
-			}
-			System.out.println();
+	public void printWarnings() {
+		Iterator<String> it = warningList.iterator();
+		while(it.hasNext()) {
+			System.out.println(it.next());
 		}
 	}
+	
+//	public void printModuleList() {
+//		System.out.println("\n\nprint module list");
+//		
+//		Iterator<ObjectModule> it = moduleList.iterator();
+//		while (it.hasNext()) {
+//			ObjectModule currModule = it.next();
+//			System.out.print(currModule.defCount + " ");
+//			
+//			//print defList
+//			List<SymbolPair> defList = currModule.getDefList();
+//			for (int i = 0; i < defList.size(); i++) {
+//				System.out.print(defList.get(i).symbol + " ");
+//				System.out.print(defList.get(i).relAddress + " ");
+//			}
+//			System.out.println();
+//			
+//			System.out.print(currModule.useCount + " ");
+//			
+//			//print useList
+//			List<String> useList = currModule.getUseList();
+//			for (int i = 0; i < useList.size(); i++) {
+//				System.out.print(useList.get(i) + " ");
+//			}
+//			System.out.println();
+//			
+//			System.out.print(currModule.codeCount + " ");
+//			
+//			//print codeList
+//			List<InstructionPair> codeList = currModule.getCodeList();
+//			for (int i = 0; i < codeList.size(); i++) {
+//				System.out.print(codeList.get(i).instrType + " ");
+//				System.out.print(codeList.get(i).instr + " ");
+//			}
+//			System.out.println();
+//		}
+//	}
 }
