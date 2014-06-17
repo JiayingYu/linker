@@ -326,7 +326,7 @@ public class Linker {
 
 	private void resolveAbsAddress(int currInstr) {
 		// for No. 9
-		if (currInstr > 512) {
+		if (currInstr % 1000 > 512) {
 			String errorMsg = " Error: Absolute address exceeds machine size; zero used";
 			memMap.add(currInstr / 1000 * 1000, errorMsg);
 			return;
