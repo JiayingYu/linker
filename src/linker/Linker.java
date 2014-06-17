@@ -223,7 +223,7 @@ public class Linker {
 
 			calLocation();
 
-			if (scanner.hasNext("\\d{4}")) {
+			if (scanner.hasNextInt()) {
 				instr = scanner.nextInt();
 			} else {
 				throw new SyntaxException("address expected " + lineNum + " "
@@ -315,7 +315,13 @@ public class Linker {
 	}
 
 	private void resolveImAddress(int currInstr) {
-		memMap.add(currInstr);
+		// check if immediate instruction is illegal
+		String errorMsg = "";
+		if (currInstr > 9999) {
+			currInstr = 9999;
+			errorMsg = " Error: Illegal immediate value; treated as 9999";
+		}
+		memMap.add(currInstr, errorMsg);
 	}
 
 	private void resolveAbsAddress(int currInstr) {
@@ -330,16 +336,25 @@ public class Linker {
 
 	private void resolveRelAddress(int currInstr, int currBaseAddress) {
 		// rightmost three digit of the current instruction
-		int relAddress = currInstr % 1000; 
 		String errorMsg = "";
-		//for No. 8
+		int opcode = currInstr / 1000;
+		int relAddress = currInstr % 1000; 
+		//check if opcode is illegal
+		if (opcode > 9) {
+			int resolvedInstr = 9999;
+			errorMsg = " Error: Illegal opcode; treated as 9999";
+			memMap.add(resolvedInstr, errorMsg);
+			return;
+		}
+		
+		//check if relative address exceeds module size
 		if (relAddress > moduleSize() - 1) {
 			relAddress = 0;
+			//global address following opcode
 			errorMsg = " Error: Relative address exceeds module size; zero used";
 		}
-		int opcode = currInstr / 1000;
-		int globalAddress = currBaseAddress + relAddress;
-		int resolvedInstr = globalAddress + opcode * 1000;
+		int resolvedInstr = opcode * 1000 + currBaseAddress + relAddress;
+
 		memMap.add(resolvedInstr, errorMsg);
 	}
 
@@ -385,7 +400,7 @@ public class Linker {
 			addr = mt.addr;
 			errorMsg = mt.getErrorMsg();
 
-			System.out.printf("%03d: %4d %s\n", index, addr, errorMsg);
+			System.out.printf("%03d: %04d %s\n", index, addr, errorMsg);
 			index++;
 		}
 	}
@@ -396,41 +411,4 @@ public class Linker {
 			System.out.println("Warning: " + it.next());
 		}
 	}
-
-	// public void printModuleList() {
-	// System.out.println("\n\nprint module list");
-	//
-	// Iterator<ObjectModule> it = moduleList.iterator();
-	// while (it.hasNext()) {
-	// ObjectModule currModule = it.next();
-	// System.out.print(currModule.defCount + " ");
-	//
-	// //print defList
-	// List<SymbolPair> defList = currModule.getDefList();
-	// for (int i = 0; i < defList.size(); i++) {
-	// System.out.print(defList.get(i).symbol + " ");
-	// System.out.print(defList.get(i).relAddress + " ");
-	// }
-	// System.out.println();
-	//
-	// System.out.print(currModule.useCount + " ");
-	//
-	// //print useList
-	// List<String> useList = currModule.getUseList();
-	// for (int i = 0; i < useList.size(); i++) {
-	// System.out.print(useList.get(i) + " ");
-	// }
-	// System.out.println();
-	//
-	// System.out.print(currModule.codeCount + " ");
-	//
-	// //print codeList
-	// List<InstructionPair> codeList = currModule.getCodeList();
-	// for (int i = 0; i < codeList.size(); i++) {
-	// System.out.print(codeList.get(i).instrType + " ");
-	// System.out.print(codeList.get(i).instr + " ");
-	// }
-	// System.out.println();
-	// }
-	// }
 }
