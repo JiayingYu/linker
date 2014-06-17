@@ -124,8 +124,8 @@ public class Linker {
 			defCountLineNum = lineNum;
 			defCountOffset = offset;
 		} else {
-			throw new SyntaxException("Number expected " + lineNum + " "
-					+ offset);
+			throw new SyntaxException("Parse Error line " + lineNum 
+					+ " offset " + offset + ": " + SyntaxError.NUM_EXPECTED);
 		}
 
 		module.setDefCount(defCount);
@@ -135,16 +135,18 @@ public class Linker {
 			String symbol = "";
 			
 			if (!scanner.hasNext()) {
-				throw new SyntaxException("too many def in module " 
-						+ defCountLineNum + " " + defCountOffset);
+				throw new SyntaxException("Parse Error line " + defCountLineNum 
+						+ " offset " + defCountOffset + ": " + SyntaxError.TO_MANY_DEF_IN_MODULE);
 			}
 			
 			if (scanner.hasNext("[a-zA-Z]\\w*")) {
 				symbol = scanner.next();
 				if (symbol.length() > 16) 
-					throw new SyntaxException("symbol too long " + lineNum + " " + offset);
+					throw new SyntaxException("Parse Error line " + lineNum 
+							+ " offset " + offset + ": " + SyntaxError.SYS_TOLONG);
 			} else {
-				throw new SyntaxException("symbol expected " + lineNum + " " + offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.SYM_EXPECTED);
 			} 
 
 			calLocation();
@@ -152,8 +154,8 @@ public class Linker {
 			try {
 				relAddress = scanner.nextInt();
 			} catch (Exception e) {
-				throw new SyntaxException("Number expected " + lineNum + " "
-						+ offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.NUM_EXPECTED);
 			}
 
 			SymbolPair sp = new SymbolPair(symbol, relAddress);
@@ -161,11 +163,6 @@ public class Linker {
 			storeSymbolTable(symbol, module.baseAddress, module.moduleNo,
 					relAddress);
 		}
-
-//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
-//			throw new SyntaxException("too many def in module " + lineNum + " "
-//					+ offset);
-//		}
 	}
 
 	private void storeSymbolTable(String symbol, int baseAddress, int moduleNo,
@@ -189,8 +186,8 @@ public class Linker {
 			useCountLineNum = lineNum;
 			useCountOffset = offset;
 		} catch (Exception e) {
-			throw new SyntaxException("Number expected " + lineNum + " "
-					+ offset);
+			throw new SyntaxException("Parse Error line " + lineNum 
+					+ " offset " + offset + ": " + SyntaxError.NUM_EXPECTED);
 		}
 
 		module.setUseCount(useCount);
@@ -200,32 +197,28 @@ public class Linker {
 			String useSymbol = "";
 					
 			if (!scanner.hasNext()) {
-				throw new SyntaxException("too many use in module " 
-						+ useCountLineNum + " " + useCountOffset );
+				throw new SyntaxException("Parse Error line " + useCountLineNum 
+						+ " offset " + useCountOffset + ": " + SyntaxError.TO_MANY_USE_IN_MODULE);
 			}
 
 			if (scanner.hasNext("[a-zA-Z]\\w*")) {
 				useSymbol = scanner.next();
 				if (useSymbol.length() > 16) {
-					throw new SyntaxException("symbol too long " + lineNum + " " + offset);
+					throw new SyntaxException("Parse Error line " + lineNum 
+							+ " offset " + offset + ": " + SyntaxError.SYS_TOLONG);
 				}
 				//detect duplicate use symbol 
 				calLocation();
 				if (scanner.hasNext(useSymbol)) {
-					throw new SyntaxException("too many use in module " 
-							+ useCountLineNum + " " + useCountOffset);
+					throw new SyntaxException("Parse Error line " + useCountLineNum 
+							+ " offset " + useCountOffset + ": " + SyntaxError.TO_MANY_USE_IN_MODULE);
 				}
 			} else {
-				throw new SyntaxException("symbol expected " + lineNum + " "
-						+ offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.SYM_EXPECTED);
 			} 
 			module.addToUseList(useSymbol);
 		}
-
-//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
-//			throw new SyntaxException("too many use in module " + lineNum + " "
-//					+ offset);
-//		}
 	}
 
 	private void readProgramText(ObjectModule module) throws SyntaxException {
@@ -239,12 +232,12 @@ public class Linker {
 			codeCount = scanner.nextInt();
 			instrCount += codeCount;
 			if (instrCount > 512) {
-				throw new SyntaxException("too many instruction in module "
-						+ lineNum + " " + offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.TO_MANY_INSTR);
 			}
 		} else {
-			throw new SyntaxException("Number expected " + lineNum + " "
-					+ offset);
+			throw new SyntaxException("Parse Error line " + lineNum 
+					+ " offset " + offset + ": " + SyntaxError.NUM_EXPECTED);
 		}
 
 		module.setCodeCount(codeCount);
@@ -255,8 +248,8 @@ public class Linker {
 			if (scanner.hasNext("R|I|E|A")) {
 				instrType = scanner.next().charAt(0); // check type here
 			} else {
-				throw new SyntaxException("instruction Type expected "
-						+ lineNum + " " + offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.INSTR_TYPE_EXPECTED);
 			}
 
 			calLocation();
@@ -264,18 +257,13 @@ public class Linker {
 			if (scanner.hasNextInt()) {
 				instr = scanner.nextInt();
 			} else {
-				throw new SyntaxException("address expected " + lineNum + " "
-						+ offset);
+				throw new SyntaxException("Parse Error line " + lineNum 
+						+ " offset " + offset + ": " + SyntaxError.ADDR_EXPECTED);
 			}
 
 			InstructionPair ip = new InstructionPair(instrType, instr);
 			module.codeList.add(ip);
 		}
-
-//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("R|I|E|A")) {
-//			throw new SyntaxException("too many instr in module " + lineNum
-//					+ " " + offset);
-//		}
 	}
 
 	public void printSymbolTable() {
