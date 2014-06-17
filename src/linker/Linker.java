@@ -17,6 +17,7 @@ public class Linker {
 	private Scanner scanner;
 	private File sourceFile;
 	private List<String> warningList = new ArrayList<String>();
+	private int instrCount = 0;
 
 	public Linker(String fileName) throws FileNotFoundException {
 		sourceFile = new File(fileName);
@@ -28,13 +29,18 @@ public class Linker {
 		String fileStr = "";
 		String line = "";
 		while (input.hasNext()) {
-			line = input.next();
-			if (!line.matches("\\s+")) // if the line is not empty
+			line = input.nextLine();
+			if (!line.matches("\\s*")) // if the line is not empty
 				fileStr += line + " EOL\n";
 		}
 
-		fileStr = fileStr.substring(0, fileStr.length() - 4);
+		if (!fileStr.matches("\\s*"))
+			fileStr = fileStr.substring(0, fileStr.length() - 4);
 		return fileStr;
+	}
+	
+	public void printFile() throws FileNotFoundException {
+		System.out.print(fileToString());
 	}
 
 	public void passOne() throws SyntaxException {
@@ -57,19 +63,19 @@ public class Linker {
 
 	// check if an address in definition exceeds the size of the module. for No5
 	private void checkDefRelAddress() {
-		int moduleSize = moduleSize();
-
 		// iterate through the moduleList
 		Iterator<ObjectModule> modListIt = moduleList.iterator();
 		while (modListIt.hasNext()) {
 			ObjectModule module = modListIt.next();
+			
+			int currModuleSize = module.codeCount - 1;
 
 			// iterate through the current defList,
 			Iterator<SymbolPair> it = module.getDefList().iterator();
 			while (it.hasNext()) {
 				// check if any relAddress exceeds module size(codeCount - 1)
 				SymbolPair sp = it.next();
-				if (sp.getRelAddress() > (moduleSize)) {
+				if (sp.getRelAddress() > currModuleSize) {
 					int oldRelAddr = sp.getRelAddress();
 					// set relAddr in module
 					sp.setRelAddress(0);
@@ -79,7 +85,7 @@ public class Linker {
 
 					int moduleNo = module.moduleNo;
 					String warnMsg = "Module " + moduleNo + ": " + sp.symbol
-							+ " too big " + oldRelAddr + " (max=" + moduleSize
+							+ " too big " + oldRelAddr + " (max=" + currModuleSize
 							+ ") assume zero relative";
 					warningList.add(warnMsg);
 				}
@@ -108,11 +114,15 @@ public class Linker {
 
 	private void readDefList(ObjectModule module) throws SyntaxException {
 		int defCount = 0;
+		int defCountLineNum = 0;
+		int defCountOffset = 0;
 		calLocation();
 
 		if (scanner.hasNextInt()) {
-			defCount = scanner.nextInt(); // number of symbols defined in
-											// deflist
+			// number of symbols defined in deflist
+			defCount = scanner.nextInt(); 
+			defCountLineNum = lineNum;
+			defCountOffset = offset;
 		} else {
 			throw new SyntaxException("Number expected " + lineNum + " "
 					+ offset);
@@ -122,22 +132,27 @@ public class Linker {
 
 		for (int i = 0; i < defCount; i++) {
 			calLocation();
-
-			String symbol = scanner.next();
-			if (!symbol.matches("[a-zA-Z]\\w*")) {
-				throw new SyntaxException("symbol expected " + lineNum + " "
-						+ offset);
-			} else if (symbol.length() > 16) {
-				throw new SyntaxException("symbol too long " + lineNum + " "
-						+ offset);
+			String symbol = "";
+			
+			if (!scanner.hasNext()) {
+				throw new SyntaxException("too many def in module " 
+						+ defCountLineNum + " " + defCountOffset);
 			}
+			
+			if (scanner.hasNext("[a-zA-Z]\\w*")) {
+				symbol = scanner.next();
+				if (symbol.length() > 16) 
+					throw new SyntaxException("symbol too long " + lineNum + " " + offset);
+			} else {
+				throw new SyntaxException("symbol expected " + lineNum + " " + offset);
+			} 
 
 			calLocation();
 			int relAddress = 0;
 			try {
 				relAddress = scanner.nextInt();
 			} catch (Exception e) {
-				throw new SyntaxException("Address expected " + lineNum + " "
+				throw new SyntaxException("Number expected " + lineNum + " "
 						+ offset);
 			}
 
@@ -147,10 +162,10 @@ public class Linker {
 					relAddress);
 		}
 
-		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
-			throw new SyntaxException("too many def in module " + lineNum + " "
-					+ offset);
-		}
+//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
+//			throw new SyntaxException("too many def in module " + lineNum + " "
+//					+ offset);
+//		}
 	}
 
 	private void storeSymbolTable(String symbol, int baseAddress, int moduleNo,
@@ -166,9 +181,13 @@ public class Linker {
 	private void readUseList(ObjectModule module) throws SyntaxException {
 		calLocation();
 		int useCount = 0;
+		int useCountLineNum = 0;
+		int useCountOffset = 0;
 
 		try {
 			useCount = scanner.nextInt();
+			useCountLineNum = lineNum;
+			useCountOffset = offset;
 		} catch (Exception e) {
 			throw new SyntaxException("Number expected " + lineNum + " "
 					+ offset);
@@ -178,33 +197,52 @@ public class Linker {
 
 		for (int i = 0; i < useCount; i++) {
 			calLocation();
-			String useSymbol = scanner.next();
-
-			if (!useSymbol.matches("[a-zA-Z]\\w*")) {
-				throw new SyntaxException("symbol expected " + lineNum + " "
-						+ offset);
-			} else if (useSymbol.length() > 16) {
-				throw new SyntaxException("symbol too long " + lineNum + " "
-						+ offset);
+			String useSymbol = "";
+					
+			if (!scanner.hasNext()) {
+				throw new SyntaxException("too many use in module " 
+						+ useCountLineNum + " " + useCountOffset );
 			}
 
+			if (scanner.hasNext("[a-zA-Z]\\w*")) {
+				useSymbol = scanner.next();
+				if (useSymbol.length() > 16) {
+					throw new SyntaxException("symbol too long " + lineNum + " " + offset);
+				}
+				//detect duplicate use symbol 
+				calLocation();
+				if (scanner.hasNext(useSymbol)) {
+					throw new SyntaxException("too many use in module " 
+							+ useCountLineNum + " " + useCountOffset);
+				}
+			} else {
+				throw new SyntaxException("symbol expected " + lineNum + " "
+						+ offset);
+			} 
 			module.addToUseList(useSymbol);
 		}
 
-		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
-			throw new SyntaxException("too many use in module " + lineNum + " "
-					+ offset);
-		}
+//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("[a-zA-Z]\\w*")) {
+//			throw new SyntaxException("too many use in module " + lineNum + " "
+//					+ offset);
+//		}
 	}
 
 	private void readProgramText(ObjectModule module) throws SyntaxException {
-		calLocation();
 		int codeCount = 0;
 		char instrType = ' ';
 		int instr = 0;
-		try {
+		calLocation();
+
+		
+		if (scanner.hasNextInt()) {
 			codeCount = scanner.nextInt();
-		} catch (Exception e) {
+			instrCount += codeCount;
+			if (instrCount > 512) {
+				throw new SyntaxException("too many instruction in module "
+						+ lineNum + " " + offset);
+			}
+		} else {
 			throw new SyntaxException("Number expected " + lineNum + " "
 					+ offset);
 		}
@@ -234,10 +272,10 @@ public class Linker {
 			module.codeList.add(ip);
 		}
 
-		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("R|I|E|A")) {
-			throw new SyntaxException("too many instr in module " + lineNum
-					+ " " + offset);
-		}
+//		if (scanner.hasNext("[^(EOL)]") && scanner.hasNext("R|I|E|A")) {
+//			throw new SyntaxException("too many instr in module " + lineNum
+//					+ " " + offset);
+//		}
 	}
 
 	public void printSymbolTable() {
@@ -348,7 +386,7 @@ public class Linker {
 		}
 		
 		//check if relative address exceeds module size
-		if (relAddress > moduleSize() - 1) {
+		if (relAddress > moduleSize()) {
 			relAddress = 0;
 			//global address following opcode
 			errorMsg = " Error: Relative address exceeds module size; zero used";

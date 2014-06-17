@@ -43,9 +43,8 @@ public class SymbolTable {
 			String symbol = entry.getKey();
 			int addr = entry.getValue().getAddr();
 			String errorMsg = entry.getValue().getErrorMsg();	
-			int ModuleNo = entry.getValue().moduleNo;
-			s += symbol + "=" + addr + " " + errorMsg + " " +  ModuleNo
-					+  " " + entry.getValue().isUsed() + "\n";
+//			int ModuleNo = entry.getValue().moduleNo;
+			s += symbol + "=" + addr + " " + errorMsg+ "\n";
 		}
 		return s;
 	}
