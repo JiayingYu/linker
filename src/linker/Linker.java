@@ -30,7 +30,7 @@ public class Linker {
 		String line = "";
 		while (input.hasNext()) {
 			line = input.nextLine();
-			if (!line.matches("\\s*")) // if the line is not empty
+//			if (!line.matches("\\s*")) // if the line is not empty
 				fileStr += line + " EOL\n";
 		}
 
@@ -75,7 +75,8 @@ public class Linker {
 			while (it.hasNext()) {
 				// check if any relAddress exceeds module size(codeCount - 1)
 				SymbolPair sp = it.next();
-				if (sp.getRelAddress() > currModuleSize) {
+				boolean isDuplicated = symbolTable.isDuplicated(sp.symbol);
+				if (sp.getRelAddress() > currModuleSize && !isDuplicated) {
 					int oldRelAddr = sp.getRelAddress();
 					// set relAddr in module
 					sp.setRelAddress(0);
@@ -104,12 +105,15 @@ public class Linker {
 	}
 
 	private void calLocation() {
-		if (scanner.hasNext("EOL")) {
+
+		while (scanner.hasNext("EOL")) {
 			lineNum++;
 			offset = 0;
-			String skip = scanner.next();
+			String skip = scanner.next("EOL");
 		}
+		
 		offset++;
+
 	}
 
 	private void readDefList(ObjectModule module) throws SyntaxException {
@@ -208,7 +212,6 @@ public class Linker {
 							+ " offset " + offset + ": " + SyntaxError.SYS_TOLONG);
 				}
 				//detect duplicate use symbol 
-				calLocation();
 				if (scanner.hasNext(useSymbol)) {
 					throw new SyntaxException("Parse Error line " + useCountLineNum 
 							+ " offset " + useCountOffset + ": " + SyntaxError.TO_MANY_USE_IN_MODULE);
@@ -266,8 +269,8 @@ public class Linker {
 		}
 	}
 
-	public void printSymbolTable() {
-		System.out.print(symbolTable);
+	public String symbolTableToString() {
+		return symbolTable.toString();
 	}
 
 	public void passTwo() {
@@ -413,8 +416,8 @@ public class Linker {
 		}
 	}
 
-	public void printMemMap() {
-		System.out.println("Memory Map");
+	public String memMapToString() {
+		String memMatStr = "Memory Map\n";
 		// iterate through memMap
 		Iterator<MemTuple> it = memMap.iterator();
 		int addr = 0;
@@ -425,16 +428,18 @@ public class Linker {
 			MemTuple mt = it.next();
 			addr = mt.addr;
 			errorMsg = mt.getErrorMsg();
-
-			System.out.printf("%03d: %04d %s\n", index, addr, errorMsg);
+			memMatStr += String.format("%03d: %04d %s\n", index, addr, errorMsg);
 			index++;
 		}
+		return memMatStr;
 	}
 
-	public void printWarnings() {
+	public String warningsToString() {
+		String warnings = "";
 		Iterator<String> it = warningList.iterator();
 		while (it.hasNext()) {
-			System.out.println("Warning: " + it.next());
+			warnings += "Warning: " + it.next() + "\n";
 		}
+		return warnings;
 	}
 }

@@ -49,6 +49,10 @@ public class SymbolTable {
 		return s;
 	}
 	
+	public boolean isDuplicated(String symbol) {
+		return treeMap.get(symbol).isDuplicated();
+	}
+	
 }
 
 class SymbolTuple {
@@ -56,7 +60,7 @@ class SymbolTuple {
 	private boolean duplicated;
 	private boolean used = false;
 	public final int moduleNo;
-	public static final String errorMsg = "Error: This Variable is multiple times defined; first value used";
+	public static final String errorMsg = "Error: This variable is multiple times defined; first value used";
 	
 	SymbolTuple (int addr, int moduleNo) {
 		this.addr = addr;
@@ -85,6 +89,10 @@ class SymbolTuple {
 	
 	boolean isUsed() {
 		return used;
+	}
+	
+	public boolean isDuplicated() {
+		return duplicated;
 	}
 	
 

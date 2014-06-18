@@ -1,0 +1,14 @@
+Warning: Module 3: X31 to big 10 (max=0) assume zero relative
+Symbol Table
+X21=4
+X31=5
+
+Memory Map
+000: 1004
+001: 1005
+002: 1004 Error: External address exceeds length of uselist; treated as immediate
+003: 1222 Error: External address exceeds length of uselist; treated as immediate
+004: 2000 Error: Absolute address exceeds machine size; zero used
+005: 3005 Error: Relative address exceeds module size; zero used
+
+
